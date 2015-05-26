@@ -1,0 +1,43 @@
+
+
+<!DOCTYPE html>
+<html>
+
+<head lang="en">
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=10.0, minimum-scale=1.0, user-scalable=1" />
+
+	<title>Test page for ping and console</title>
+
+	<script type="text/javascript" src="src/websocket.io.js"></script>
+	<script type="text/javascript" src="src/pacSetup.js"></script>
+
+
+</head>
+
+<body onload="initialize()">
+
+This is an index page.
+
+<button onclick="sendPing()"> send ping </button>
+<button onclick="sendConsoleLog()"> Send consoleLog packet </button>
+
+</body>
+
+
+<script type="text/javascript">
+
+function sendPing() {
+	wsio.emit('ping', { time: new Date().toJSON() } );
+}
+
+function sendConsoleLog() {
+	wsio.emit('consoleLog', { comment: 'button was pressed' } );
+}
+
+
+</script>
+
+
+</html>
+

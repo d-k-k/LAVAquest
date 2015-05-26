@@ -1,0 +1,25 @@
+{
+	"name": "DylankNodeWebserver",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Just a test",
+	"keywords": [
+		"webserver",
+		"example",
+		"learning"
+	],
+	"author": "D K <dylank@hawaii.edu>",
+	"contributors": [
+		{
+			"name": "D K",
+			"email": "dylank@hawaii.edu"
+		}
+	],
+	"dependencies": {
+		"json5": "latest",
+		"mime": "latest",
+		"ws": "latest"
+	},
+	"repository": {
+	}
+}
