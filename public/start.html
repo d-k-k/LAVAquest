@@ -17,26 +17,27 @@
 
 <body onload="initialize()">
 
-This is an index page.
+	<div id='topLevel'>
 
-<button onclick="sendPing()"> send ping </button>
-<button onclick="sendConsoleLog()"> Send consoleLog packet </button>
+		<div id='startLoad'>
+			Loading...	
+		</div>
+
+		<div id='inputName' style='visibility:hidden'>
+			<h3 style="text-align:center">
+				Enter Your Name:<br>
+				<input type="text" id="sessionValue" size="40" style="font-size: 1em;" tabindex="1">
+				<br>
+				<button onclick="sendServerName()" style='width:10%;height=10%' > Connect </button>
+		    	<br>
+		    	<div id='inputMessageLength' style='visibility:hidden;color:red'> Name needs to be at least 3 chars </div>
+		</div>
+
+	</div>
+
 
 </body>
 
-
-<script type="text/javascript">
-
-function sendPing() {
-	wsio.emit('ping', { time: new Date().toJSON() } );
-}
-
-function sendConsoleLog() {
-	wsio.emit('consoleLog', { comment: 'button was pressed' } );
-}
-
-
-</script>
 
 
 </html>
