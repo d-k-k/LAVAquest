@@ -160,9 +160,10 @@ function mainUpdater() {
 		else if  ( allClients[i].moveVert === 'down' ) { allClients[i].y++; }
 
 		workingDiv = document.getElementById( allClients[i].topId );
-		workingDiv.style.left = allClients[i].x - parseInt( workingDiv.style.width ) /2 + 'px';
-		workingDiv.style.top = allClients[i].y - parseInt( workingDiv.style.height ) /2 + 'px';
-
+		if(workingDiv != null) { 
+			workingDiv.style.left = allClients[i].x - parseInt( workingDiv.style.width ) /2 + 'px';
+			workingDiv.style.top = allClients[i].y - parseInt( workingDiv.style.height ) /2 + 'px';
+		}
 	}
 
 } //end main updater
