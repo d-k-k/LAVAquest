@@ -1,74 +1,87 @@
 
+
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-    <meta name="description" content="">
-    <meta name="author" content="">
-    <link rel="icon" href="favicon.ico">
+<html>
 
-    <title>SAGE2 Menu</title>
+<head lang="en">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=10.0, minimum-scale=1.0, user-scalable=1" />
 
-    <!-- Bootstrap core CSS -->
-    <link href="src/bootstrap.min.css" rel="stylesheet">
+    <title>Login</title>
 
+    <style> 
+    html *
+    {
+       font-family: Arial;
+    }
 
-  </head>
+    .center {
+        margin-left: auto;
+        margin-right: auto;
+        width: 60%;
+        background-color: #b0e0e6;
+    }
 
-
-
-
-
-
-
-
-  <body>
+    </style>
 
 
-    <div class="container">
+</head>
+
+<body>
+
+    <div id='topDiv'>
 
 
+        <div style="text-align:center">
+            <h3 >
+                Enter Your Name:<br>
+            </h3>
+            <input type="text" id="inputName" size="40" style="font-size: 1em;" tabindex="1" value='Random'>
+            <br>
+            <button onclick="initializeWS()" style='width:10%;height=15%' > Connect </button>
+        </div>
 
 
+        <div>
+            <div id='fSelect' onclick=changeSelection(1) style='position:absolute;top:50%;left:40%;border:10px solid black'>
+            <img style='width:32px;height:48px;background:url(img/squire_m.png)' src='img/blank32x48.png'>
+            </div>
+            <div id='mSelect' onclick=changeSelection(2) style='position:absolute;top:50%;left:50%'>
+            <img style='left:200px;width:32px;height:48px;background:url(img/redmage_m.png)' src='img/blank32x48.png'>
+            </div>
+            <div id='sSelect' onclick=changeSelection(3) style='position:absolute;top:50%;left:60%%'>
+            <img style='left:300px;width:32px;height:48px;background:url(img/whitemage_m.png)' src='img/blank32x48.png'>
+            </div>
+        </div>
 
-        <h1>SAGE2</h1>
-        <p class="lead">Am I doing this correctly</p>
-
-		<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
-		  <div class="panel panel-default">
-		    <div class="panel-heading" role="tab" id="headingOne">
-		      <h4 class="panel-title">
-		        <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-		          Settings
-		        </a>
-		      </h4>
-		    </div>
-		    <div id="collapseOne" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="headingOne">
-		      <div class="panel-body">
-		        
-		      	Put settings buttons here.
-
-		      </div>
-		    </div>
-		  </div>
-		</div>
+    </div>
 
 
+</body>
+
+<script type="text/javascript">
+    function changeSelection(which) {
+        var workingDiv = document.getElementById('fSelect');
+        if(which === 1) { workingDiv.style.border = '10px solid black'; }
+        else { workingDiv.style.border = 'none'; }
 
 
+        workingDiv = document.getElementById('mSelect');
+        if(which === 2) { workingDiv.style.border = '10px solid black'; }
+        else { workingDiv.style.border = 'none'; }
+
+        workingDiv = document.getElementById('sSelect');
+        if(which === 3) { workingDiv.style.border = '10px solid black'; }
+        else { workingDiv.style.border = 'none'; }
+    } //end
+</script>
 
 
+<script type="text/javascript" src="src/kinetic-v5.1.0.min.js"></script>
+<script type="text/javascript" src="src/websocket.io.js"></script>
+<script type="text/javascript" src="src/pacSetup.js"></script>
+<script type="text/javascript" src="src/main.js"></script>
 
 
-    </div><!-- /.container -->
-
-    <!-- Bootstrap core JavaScript
-    ================================================== -->
-    <!-- Placed at the end of the document so the pages load faster -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
-    <script src="src/bootstrap.min.js"></script>
-  </body>
 </html>
+

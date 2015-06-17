@@ -64,7 +64,7 @@ setInterval( function () {
 startTime = timeObject.getTime();
 deltaTime = 0;
 
-setInterval( mainUpdater, 20);
+setInterval( mainUpdater, 20); //ms. 20 = 50fps.
 
 
 
@@ -85,7 +85,6 @@ function openWebSocketClient(wsio) {
 }
 
 
-
 function closeWebSocketClient(wsio) {
 	console.log( ">Disconnect" + wsio.id + " (" + wsio.clientType + " " + wsio.clientID+ ")");
 
@@ -93,33 +92,208 @@ function closeWebSocketClient(wsio) {
 } //end closeWebSocketClient
 
 
+function mainUpdater() {
+
+	for(var i = 0; i < clientData.length; i++) {
+
+		if ( clientData[i].moveHori === 'left' ) { clientData[i].x--; }
+		else if  ( clientData[i].moveHori === 'right' ) { clientData[i].x++; }
+		if  ( clientData[i].moveVert === 'up' ) { clientData[i].y--; }
+		else if  ( clientData[i].moveVert === 'down' ) { clientData[i].y++; }
+
+	}
+
+} //end main updater
+
+
+//---------------------------------------------------------------------------websocket listener functions
+
 /*
 Params
 wsio is the websocket that was used.
 data is the sent packet, usually in json format.
 */
 function wsAddClient(wsio, data) {
+	console.log('addClient packet received');
 
 	clients.push(wsio);
 	setupListeners(wsio);
-	addClientData(wsio);
-
-	wsio.emit('serverAccepted', {} );
+	var newClientData = addClientData(wsio, data);
+	wsio.emit('serverAccepted', {clientData: newClientData} );
+	sendClientListUpdates(wsio, newClientData.cid, newClientData);
 }
+
+
+function wsPing(wsio, data) {
+	console.log('---wsPing:' + data.time);
+	wsio.emit('serverPingBack', data);
+} //end class
+
+
+function wsConsoleLog(wsio, data) {
+	console.log('---wsConsoleLog:' + data.comment);
+
+	//might want to write to a file as well later
+} //end class
+
+function wsClientSendKeyStatus(wsio, data) {
+	//console.log( 'Server detected client key status sent ' + "moveHori(" + data.moveHori + ") moveVert(" + data.moveVert + ") pushStatus(" + data.pushStatus + ")");
+
+	var cid = findClientDataIndexGivenWsio(wsio);
+
+	if(cid < 0) { console.log('unknown wsio passing key status'); return; }
+
+
+	//if doing a press
+	if( data.pushStatus === 'press' ) {
+		if(data.moveHori !== null ) { clientData[cid].moveHori = data.moveHori; }
+		if(data.moveVert !== null ) { clientData[cid].moveVert = data.moveVert; }
+	}
+	else if ( data.pushStatus === 'release' ) {
+		if(data.moveHori !== null ) { clientData[cid].moveHori = 'none'; }
+		if(data.moveVert !== null ) { clientData[cid].moveVert = 'none'; }
+	}
+	else { console.log( 'unknown push status:' + data.pushStatus ); return; }
+
+	var packetData = {
+		cid: clientData[cid].cid,
+		x: clientData[cid].x,
+		y: clientData[cid].y,
+		moveHori: clientData[cid].moveHori,
+		moveVert: clientData[cid].moveVert
+	}
+
+	for(var i =0; i < clientData.length; i++) {
+		clientData[i].wsio.emit( 'movementUpdate', packetData );
+	}
+
+
+} //end class
+
+
+
+
+//---------------------------------------------------------------------------Client data manipulation functions
+
 
 /*
 When receiving a packet of the named type, call the function.
 */
 function setupListeners(wsio) {
 	
-	wsio.on('ping',						wsPing);
+
 	wsio.on('consoleLog',				wsConsoleLog);
-	wsio.on('clientSendName',			wsClientSendName);
 	wsio.on('clientSendKeyStatus',		wsClientSendKeyStatus);
 
 } //end setupListeners
 
 
+function addClientData( wsio , data) {
+	var newClientData = {
+		wsio: wsio,
+		cid: clientData.length,
+		name: data.name,
+		characterType: data.selection,
+		hp: 100,
+		maxHp: 100,
+		x: mapWidth/2,
+		y: mapHeight/2,
+		moveHori: 'none',
+		moveVert: 'none'
+	};
+
+	clientData.push(newClientData);
+
+	var reducedData = {
+		cid: clientData.length,
+		name: data.name,
+		characterType: data.selection,
+		hp: 100,
+		maxHp: 100,
+		x: mapWidth/2,
+		y: mapHeight/2,
+		moveHori: 'none',
+		moveVert: 'none'
+	};
+	return reducedData;
+} //end
+
+
+function findClientDataIndexGivenWsio(wsio) {
+	for( var i = 0; i < clientData.length; i++ ) {
+		if(clientData[i].wsio == wsio) {
+			return i;
+		}
+	}
+	return -1; //depending on where this is called, may error.
+	console.log("Error could not find client data for given wsio");
+} 
+
+function sendClientListUpdates(wsio, passedId, reducedData) {
+	console.log( 'Server sending client list');
+
+	var cid = findClientDataIndexGivenWsio(wsio);
+	if(cid !== passedId) { console.log('Error with id finder'); }
+
+	if ( cid < 0 ) { console.log("unable to find client data"); }
+	else {
+
+		//send the new player updates to everyone else
+		var fullUserList = [];
+		var temp;
+
+		for(var i = 0; i < clientData.length; i++) {
+			if(i != cid) { clientData[i].wsio.emit( 'addUser', reducedData ); }
+			temp =  {
+				cid: clientData[i].cid,
+				name: clientData[i].name,
+				characterType: clientData[i].characterType,
+				hp: clientData[i].hp,
+				maxHp: clientData[i].maxHp,
+				x: clientData[i].x,
+				y: clientData[i].x,
+				moveHori: clientData[i].moveHori,
+				moveVert: clientData[i].moveVert
+			};
+			fullUserList.push(temp);
+		}
+
+		//now send full user list to the new connected client
+		wsio.emit( 'fullUserList', { array: fullUserList } );
+
+		console.log('Finished sending new user packets.');
+
+
+	} //if the client was validly adding their name
+
+
+} //end sendClientListUpdates
+
+
+//---------------------------------------------------------------------------Utility functions
+
+
+function removeElement(list, elem) {
+	if(list.indexOf(elem) >= 0){
+		moveElementToEnd(list, elem);
+		list.pop();
+	}
+}
+
+function moveElementToEnd(list, elem) {
+	var i;
+	var pos = list.indexOf(elem);
+	if(pos < 0) return;
+	for(i=pos; i<list.length-1; i++){
+		list[i] = list[i+1];
+	}
+	list[list.length-1] = elem;
+}
+
+
+
+
+//---------------------------------------------------------------------------Not used functions
 
 function executeConsoleCommand( cmd ) {
 	var child;
@@ -131,6 +305,8 @@ function executeConsoleCommand( cmd ) {
 		}
 	});
 }
+
+
 
 function executeScriptFile( file ) {
 
@@ -162,177 +338,4 @@ function executeScriptFile( file ) {
 
 
     return proc;
-}
-
-
-
-function mainUpdater() {
-
-	for(var i = 0; i < clientData.length; i++) {
-
-		if ( clientData[i].moveHori === 'left' ) { clientData[i].x--; }
-		else if  ( clientData[i].moveHori === 'right' ) { clientData[i].x++; }
-		if  ( clientData[i].moveVert === 'up' ) { clientData[i].y--; }
-		else if  ( clientData[i].moveVert === 'down' ) { clientData[i].y++; }
-
-	}
-
-} //end main updater
-
-
-//---------------------------------------------------------------------------websocket listener functions
-
-
-function wsPing(wsio, data) {
-	console.log('---wsPing:' + data.time);
-	wsio.emit('serverPingBack', data);
-} //end class
-
-
-function wsConsoleLog(wsio, data) {
-	console.log('---wsConsoleLog:' + data.comment);
-	//executeConsoleCommand( "echo wsConsoleLog activating executeConsoleCommand" );
-	
-	//executeConsoleCommand( "open -a TextEdit.app" );
-
-	executeScriptFile( "script/testScript" );
-} //end class
-
-
-function wsClientSendName(wsio, data) {
-	console.log( 'Server detected client name sent:' + data.name );
-
-	var cdi = findClientDataIndexGivenWsio(wsio);
-
-	if ( cdi < 0 ) { console.log("unable to find client data"); }
-	else {
-		clientData[cdi].name = data.name;
-		console.log( 'Setting name to:' + clientData[cdi].name );
-
-
-
-		//send the new player updates to everyone else
-		var nud = {
-			name: clientData[cdi].name,
-			cid: clientData[cdi].cid,
-			x: clientData[cdi].x,
-			y: clientData[cdi].y,
-			moveHori: clientData[cdi].moveHori,
-			moveVert: clientData[cdi].moveVert
-		};
-		var fullUserList = [];
-		var temp;
-
-		for(var i = 0; i < clientData.length; i++) {
-			if(i != cdi) {
-				clientData[i].wsio.emit( 'addUser', nud );
-			}
-
-			temp = {
-				name: clientData[i].name,
-				cid: clientData[i].cid,
-				x: clientData[i].x,
-				y: clientData[i].y,
-				moveHori: clientData[i].moveHori,
-				moveVert: clientData[i].moveVert
-			};
-			fullUserList.push(temp);
-		}
-
-		//now send full user list to the new connected client
-		wsio.emit( 'fullUserList', { array: fullUserList } );
-
-		console.log('Finished sending new user packets.');
-
-
-	} //if the client was validly adding their name
-
-
-} //end class
-
-
-function wsClientSendKeyStatus(wsio, data) {
-	//console.log( 'Server detected client key status sent ' + "moveHori(" + data.moveHori + ") moveVert(" + data.moveVert + ") pushStatus(" + data.pushStatus + ")");
-
-	var cdi = findClientDataIndexGivenWsio(wsio);
-
-	if(cdi < 0) { console.log('unknown wsio passing key status'); return; }
-
-
-	//if doing a press
-	if( data.pushStatus === 'press' ) {
-		if(data.moveHori !== null ) { clientData[cdi].moveHori = data.moveHori; }
-		if(data.moveVert !== null ) { clientData[cdi].moveVert = data.moveVert; }
-	}
-	else if ( data.pushStatus === 'release' ) {
-		if(data.moveHori !== null ) { clientData[cdi].moveHori = 'none'; }
-		if(data.moveVert !== null ) { clientData[cdi].moveVert = 'none'; }
-	}
-	else { console.log( 'unknown push status:' + data.pushStatus ); return; }
-
-	var packetData = {
-		cid: clientData[cdi].cid,
-		name: clientData[cdi].name,
-		x: clientData[cdi].x,
-		y: clientData[cdi].y,
-		moveHori: clientData[cdi].moveHori,
-		moveVert: clientData[cdi].moveVert
-	}
-
-	for(var i =0; i < clientData.length; i++) {
-		clientData[i].wsio.emit( 'movementUpdate', packetData );
-	}
-
-
-} //end class
-
-
-
-
-//---------------------------------------------------------------------------Client data manipulation functions
-
-function addClientData( wsio ) {
-	var ncd = {
-		wsio: wsio,
-		cid: clientData.length,
-		name: "unknown",
-		x: mapWidth/2,
-		y: mapHeight/2,
-		moveHori: 'none',
-		moveVert: 'none'
-	};
-	clientData.push(ncd);
-} //end
-
-
-function findClientDataIndexGivenWsio(wsio) {
-	for( var i = 0; i < clientData.length; i++ ) {
-		if(clientData[i].wsio == wsio) {
-			return i;
-		}
-	}
-	return -1; //depending on where this is called, may error.
-	console.log("Error could not find client data for given wsio");
-} 
-
-
-//---------------------------------------------------------------------------Utility functions
-
-
-
-function removeElement(list, elem) {
-	if(list.indexOf(elem) >= 0){
-		moveElementToEnd(list, elem);
-		list.pop();
-	}
-}
-
-function moveElementToEnd(list, elem) {
-	var i;
-	var pos = list.indexOf(elem);
-	if(pos < 0) return;
-	for(i=pos; i<list.length-1; i++){
-		list[i] = list[i+1];
-	}
-	list[list.length-1] = elem;
 }

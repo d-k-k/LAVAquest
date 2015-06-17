@@ -5,10 +5,7 @@
 //---------------------------------------------------------------------------Variable setup
 var wsio 			= null;
 var debug			= true;
-var stage1SentName 	= false;
-var stage2GotList	= false;
-
-var allClients		= [];
+var allWsClients	= [];
 
 //---------------------------------------------------------------------------Code start
 
@@ -20,12 +17,8 @@ var allClients		= [];
 /**
 Setup of websockets.
  */
-function initialize() {
-
+function initializeWS() {
 	if(debug){console.log("Initializing client");}
-
-	document.addEventListener('keydown', keyDownHandler, false);
-	document.addEventListener('keyup', keyUpHandler, false);
 
 	// Create a connection to server
 	wsio = new WebsocketIO();
@@ -36,17 +29,26 @@ function initialize() {
 		setupListeners();
 
 		var clientDescription = {
+			name: getInputName(),
+			selection: getCharacterSelection(),
 			clientType: "client"
 		};
+
+		console.log('Packet addClient being sent:');
+		console.dir( clientDescription );
 		wsio.emit('addClient', clientDescription);
+
+
+		initializeKineticStage();
 	});
 
 	wsio.on('close', function (evt) {
-
+		alert('Lost connection');
 	});
 
 
-	setInterval( mainUpdater, 20);
+	setInterval( mainUpdater, 20); //ms 20 = 50fps
+
 
 	//might want this to create listeners.
 	// var sage2UI = document.getElementById('sage2UI');
@@ -55,6 +57,35 @@ function initialize() {
 	// document.addEventListener('keydown',    noBackspace,  false);
 } //end initialize
 
+
+function getInputName() {
+
+	var inputName = document.getElementById('inputName').value;
+
+	inputName = inputName.trim();
+
+	if ( inputName.length <= 2 ) {
+		if(inputName.length > 0) { inputName = 'User ' + inputName; }
+		else { inputName = 'Blank User'; }
+	}
+	else if(inputName.length > 8) {  inputName = inputName.substring(0,8); }
+
+	return inputName;
+} //end getInputName
+
+
+function getCharacterSelection() {
+	var workingDiv = document.getElementById('fSelect');
+	if(workingDiv.style.border !== 'none') { return 1; }
+
+	workingDiv = document.getElementById('mSelect');
+	if(workingDiv.style.border !== 'none') { return 2; }
+
+	// workingDiv = document.getElementById('sSelect');
+	// if(workingDiv.style.border !== 'none') { return 3; }
+	return 3;
+
+} //end getCharacterSelection
 
 
 
@@ -65,9 +96,12 @@ function initialize() {
 function setupListeners() {
 	wsio.on('serverAccepted', function(data) {
 		console.log('---Has been accepted by server---');
-		console.dir(data);
-		document.getElementById('startLoad').style.visibility = 'hidden';
-		document.getElementById('inputName').style.visibility = 'visible';
+		console.dir(data.clientData);
+
+		allWsClients.push(data.clientData);
+		
+		addThisClientAvatar(data.clientData);
+
 	});
 
 	wsio.on('serverPingBack', function(data) {
@@ -86,57 +120,33 @@ function wsAddUser(data) {
 	console.log("Got add user packet");
 	console.log('--Name:' + data.name + '. x:' + data.x + '. y:' + data.y + '. moveHori:' + data.moveHori+ '. moveVert:' + data.moveVert );
 
-	userEntry = {
-		topId : data.name + ':' + data.cid,
-		textId : data.name + ':' + data.cid + ":text",
-		cid : data.cid, 
-		name : data.name,
-		moveHori : data.moveHori,
-		moveVert : data.moveVert
-	}
+	allWsClients.push(userEntry);
 
-	allClients.push(userEntry);
-
-	addUserToField(data);
+	addOtherClientAvatar(data);
 
 }
 
 function wsFullUserList(data) {
 
 	console.log("Got full user list packet. status of data:" + data);
-	
-	var userEntry;
 
-	for( var i = 0; i < data.array.length; i++ ) {
-		userEntry = {
-			topId : data.array[i].name + ':' + data.array[i].cid,
-			textId : data.array[i].name + ':' + data.array[i].cid + ":text",
-			cid : data.array[i].cid, 
-			name : data.array[i].name,
-			moveHori : data.array[i].moveHori,
-			moveVert : data.array[i].moveVert
-		}
-
-		allClients.push(userEntry);
-
+	//data has .array containing all other clients.
+	for(var i = 0; i < data.array.length; i++) {
+		allWsClients.push( data.array[i] );
+		addOtherClientAvatar( data.array[i] );
 		console.log('--Name:' + data.array[i].name + '. x:' + data.array[i].x + '. y:' + data.array[i].y + '. moveHori:' + data.array[i].moveHori+ '. moveVert:' + data.array[i].moveVert );
 	}
-
-	stage2GotList = true;
-
-	showField(data);
-
 }
 
 function wsMovementUpdate(data) {
 
 
-	for(var i = 0; i < allClients.length; i++) {
-		if(allClients[i].cid === data.cid) {
-			allClients[i].x = data.x;
-			allClients[i].y = data.y;
-			allClients[i].moveHori = data.moveHori;
-			allClients[i].moveVert = data.moveVert;
+	for(var i = 0; i < allWsClients.length; i++) {
+		if(allWsClients[i].cid === data.cid) {
+			allWsClients[i].x = data.x;
+			allWsClients[i].y = data.y;
+			allWsClients[i].moveHori = data.moveHori;
+			allWsClients[i].moveVert = data.moveVert;
 			return;
 		}
 	}
@@ -150,20 +160,17 @@ function wsMovementUpdate(data) {
 
 function mainUpdater() {
 
-	var workingDiv;
+	for(var i = 0; i < allWsClients.length; i++) {
 
-	for(var i = 0; i < allClients.length; i++) {
+		var xdiff = 0, ydiff = 0;
 
-		if ( allClients[i].moveHori === 'left' ) { allClients[i].x--; }
-		else if  ( allClients[i].moveHori === 'right' ) { allClients[i].x++; }
-		if  ( allClients[i].moveVert === 'up' ) { allClients[i].y--; }
-		else if  ( allClients[i].moveVert === 'down' ) { allClients[i].y++; }
+		if ( allWsClients[i].moveHori === 'left' ) { allWsClients[i].x--;  xdiff = -1;}
+		else if  ( allWsClients[i].moveHori === 'right' ) { allWsClients[i].x++; xdiff = 1;}
+		if  ( allWsClients[i].moveVert === 'up' ) { allWsClients[i].y--; ydiff = -1;}
+		else if  ( allWsClients[i].moveVert === 'down' ) { allWsClients[i].y++; ydiff = 1;}
 
-		workingDiv = document.getElementById( allClients[i].topId );
-		if(workingDiv != null) { 
-			workingDiv.style.left = allClients[i].x - parseInt( workingDiv.style.width ) /2 + 'px';
-			workingDiv.style.top = allClients[i].y - parseInt( workingDiv.style.height ) /2 + 'px';
-		}
+		givenWsDataShiftBySpecifiedAmount( allWsClients[i], xdiff, ydiff );
+
 	}
 
 } //end main updater
@@ -171,21 +178,6 @@ function mainUpdater() {
 
 
 //---------------------------------------------------------------------------functions
-
-function sendServerName() {
-	console.log('Client sending name');
-	var inputName = document.getElementById('sessionValue').value;
-	if ( inputName.trim().length <= 2 || stage1SentName ) {
-		document.getElementById('inputMessageLength').style.visibility = 'visible'; 
-	}
-	else { 
-		//clientSendName
-		wsio.emit( 'clientSendName' , { name:  inputName.trim() } );
-		stage1SentName = true;
-
-
-	}
-}
 
 
 function keyDownHandler(event) {
@@ -253,26 +245,30 @@ function showField(data) {
 
 } //end showField
 
-function addUserToField(data) {
 
-		var userDiv, textSpan;
 
-		document.body.innerHTML += '<div id="' + data.name + ':' + data.cid + '"></div>';
-		workingDiv = document.getElementById(data.name + ':' + data.cid);
-		workingDiv.style.position = 'absolute';
-		workingDiv.style.border = '1px solid black';
-		workingDiv.style.width = '20px';
-		workingDiv.style.height = '20px';
-		workingDiv.style.top = parseInt(data.y) - parseInt(workingDiv.style.width) /2 + 'px';
-		workingDiv.style.left = parseInt(data.x) - parseInt(workingDiv.style.height) /2 + 'px';
+//obsolete because using kinetic adder now
 
-		workingDiv.innerHTML +=  '<span id="' +  data.name + ':' + data.cid + ':text"></div>';
-		textSpan = document.getElementById( data.name + ':' + data.cid + ':text' );
-		textSpan.id = data.name + ':' + data.cid + ":text";
-		textSpan.innerHTML =  data.name;
-		textSpan.style.position = 'absolute';
-		textSpan.style.top =  parseInt(workingDiv.style.height) + 5  + 'px';
-		textSpan.style.left = parseInt(workingDiv.style.width)/2 - parseInt(textSpan.style.width)/2 + 'px';
+// function addUserToField(data) {
 
-}
+// 		var userDiv, textSpan;
+
+// 		document.body.innerHTML += '<div id="' + data.name + ':' + data.cid + '"></div>';
+// 		workingDiv = document.getElementById(data.name + ':' + data.cid);
+// 		workingDiv.style.position = 'absolute';
+// 		workingDiv.style.border = '1px solid black';
+// 		workingDiv.style.width = '20px';
+// 		workingDiv.style.height = '20px';
+// 		workingDiv.style.top = parseInt(data.y) - parseInt(workingDiv.style.width) /2 + 'px';
+// 		workingDiv.style.left = parseInt(data.x) - parseInt(workingDiv.style.height) /2 + 'px';
+
+// 		workingDiv.innerHTML +=  '<span id="' +  data.name + ':' + data.cid + ':text"></div>';
+// 		textSpan = document.getElementById( data.name + ':' + data.cid + ':text' );
+// 		textSpan.id = data.name + ':' + data.cid + ":text";
+// 		textSpan.innerHTML =  data.name;
+// 		textSpan.style.position = 'absolute';
+// 		textSpan.style.top =  parseInt(workingDiv.style.height) + 5  + 'px';
+// 		textSpan.style.left = parseInt(workingDiv.style.width)/2 - parseInt(textSpan.style.width)/2 + 'px';
+
+// }
 
