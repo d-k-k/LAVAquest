@@ -99,7 +99,7 @@ function setupListeners() {
 		console.dir(data.clientData);
 
 		allWsClients.push(data.clientData);
-		
+
 		addThisClientAvatar(data.clientData);
 
 	});
@@ -120,7 +120,7 @@ function wsAddUser(data) {
 	console.log("Got add user packet");
 	console.log('--Name:' + data.name + '. x:' + data.x + '. y:' + data.y + '. moveHori:' + data.moveHori+ '. moveVert:' + data.moveVert );
 
-	allWsClients.push(userEntry);
+	allWsClients.push(data);
 
 	addOtherClientAvatar(data);
 
@@ -129,6 +129,7 @@ function wsAddUser(data) {
 function wsFullUserList(data) {
 
 	console.log("Got full user list packet. status of data:" + data);
+	console.dir(data);
 
 	//data has .array containing all other clients.
 	for(var i = 0; i < data.array.length; i++) {
@@ -139,7 +140,12 @@ function wsFullUserList(data) {
 }
 
 function wsMovementUpdate(data) {
+	// if(debug){console.log("Movement update packet");}
 
+	// if(debug){
+	// 	console.log('stage:' + stage);
+	// 	console.log();
+	// }
 
 	for(var i = 0; i < allWsClients.length; i++) {
 		if(allWsClients[i].cid === data.cid) {
@@ -147,6 +153,11 @@ function wsMovementUpdate(data) {
 			allWsClients[i].y = data.y;
 			allWsClients[i].moveHori = data.moveHori;
 			allWsClients[i].moveVert = data.moveVert;
+
+			//reducing down to one update to lower resource consumption. Maybe should focus on functionality rather than efficiency.
+			repositionOneEntityCorrectly( allWsClients[i] );
+			//repositionAllEntitiesCorrectly();
+
 			return;
 		}
 	}
@@ -169,9 +180,12 @@ function mainUpdater() {
 		if  ( allWsClients[i].moveVert === 'up' ) { allWsClients[i].y--; ydiff = -1;}
 		else if  ( allWsClients[i].moveVert === 'down' ) { allWsClients[i].y++; ydiff = 1;}
 
+
 		givenWsDataShiftBySpecifiedAmount( allWsClients[i], xdiff, ydiff );
 
 	}
+
+	if(stage !== null) { stage.draw(); }
 
 } //end main updater
 
@@ -180,70 +194,6 @@ function mainUpdater() {
 //---------------------------------------------------------------------------functions
 
 
-function keyDownHandler(event) {
-	if (event.target === document.getElementById('sessionValue') &&
-		(event.keyCode === 13 || event.which === 13) )
-	{
-		sendServerName();
-	}
-	else if( stage2GotList ) {
-		var keyData = { moveHori:null, moveVert:null, pushStatus: 'press' } ;
-		var shouldSend = false;
-
-		//console.log('Keypress:' + event.keyCode);
-
-
-		if (event.keyCode === 87 || event.which === 87) { keyData.moveVert = 'up'; shouldSend = true; } //w
-		else if (event.keyCode === 65 || event.which === 65) { keyData.moveHori = 'left'; shouldSend = true; } //a
-		else if (event.keyCode === 83 || event.which === 83) { keyData.moveVert = 'down'; shouldSend = true; } //s
-		else if (event.keyCode === 68 || event.which === 68) { keyData.moveHori = 'right'; shouldSend = true; } //d
-
-		if(shouldSend) {
-			wsio.emit('clientSendKeyStatus', keyData);
-		}
-
-	} //end check for key press on direction control
-
-} //end keyDownHandler
-
-
-function keyUpHandler(event) {
-
-	if( stage2GotList ) {
-		var keyData = { moveHori:null, moveVert:null, pushStatus: 'release' } ;
-		var shouldSend = false;
-
-		//console.log('Keypress:' + event.keyCode);
-
-
-		if (event.keyCode === 87 || event.which === 87) { keyData.moveVert = 'up'; shouldSend = true; } //w
-		else if (event.keyCode === 65 || event.which === 65) { keyData.moveHori = 'left'; shouldSend = true; } //a
-		else if (event.keyCode === 83 || event.which === 83) { keyData.moveVert = 'down'; shouldSend = true; } //s
-		else if (event.keyCode === 68 || event.which === 68) { keyData.moveHori = 'right'; shouldSend = true; } //d
-
-		if(shouldSend) {
-			wsio.emit('clientSendKeyStatus', keyData);
-		}
-
-	} //end check for key press on direction control
-
-} //end keyDownHandler
-
-
-function showField(data) {
-
-	var workingDiv = document.getElementById('inputName');
-	workingDiv.style.visibility = 'hidden';
-	workingDiv.style.top = -1000;
-	workingDiv.style.left = -1000;
-	workingDiv = document.getElementById('inputMessageLength');
-	workingDiv.style.visibility = 'hidden';
-
-	for( var i = 0; i < data.array.length; i++ ) {
-		addUserToField(data.array[i]);
-	}
-
-} //end showField
 
 
 
@@ -272,3 +222,67 @@ function showField(data) {
 
 // }
 
+// function keyDownHandler(event) {
+// 	if (event.target === document.getElementById('sessionValue') &&
+// 		(event.keyCode === 13 || event.which === 13) )
+// 	{
+// 		sendServerName();
+// 	}
+// 	else if( stage2GotList ) {
+// 		var keyData = { moveHori:null, moveVert:null, pushStatus: 'press' } ;
+// 		var shouldSend = false;
+
+// 		//console.log('Keypress:' + event.keyCode);
+
+
+// 		if (event.keyCode === 87 || event.which === 87) { keyData.moveVert = 'up'; shouldSend = true; } //w
+// 		else if (event.keyCode === 65 || event.which === 65) { keyData.moveHori = 'left'; shouldSend = true; } //a
+// 		else if (event.keyCode === 83 || event.which === 83) { keyData.moveVert = 'down'; shouldSend = true; } //s
+// 		else if (event.keyCode === 68 || event.which === 68) { keyData.moveHori = 'right'; shouldSend = true; } //d
+
+// 		if(shouldSend) {
+// 			wsio.emit('clientSendKeyStatus', keyData);
+// 		}
+
+// 	} //end check for key press on direction control
+
+// } //end keyDownHandler
+
+
+// function keyUpHandler(event) {
+
+// 	if( stage2GotList ) {
+// 		var keyData = { moveHori:null, moveVert:null, pushStatus: 'release' } ;
+// 		var shouldSend = false;
+
+// 		//console.log('Keypress:' + event.keyCode);
+
+
+// 		if (event.keyCode === 87 || event.which === 87) { keyData.moveVert = 'up'; shouldSend = true; } //w
+// 		else if (event.keyCode === 65 || event.which === 65) { keyData.moveHori = 'left'; shouldSend = true; } //a
+// 		else if (event.keyCode === 83 || event.which === 83) { keyData.moveVert = 'down'; shouldSend = true; } //s
+// 		else if (event.keyCode === 68 || event.which === 68) { keyData.moveHori = 'right'; shouldSend = true; } //d
+
+// 		if(shouldSend) {
+// 			wsio.emit('clientSendKeyStatus', keyData);
+// 		}
+
+// 	} //end check for key press on direction control
+
+// } //end keyDownHandler
+
+
+// function showField(data) {
+
+// 	var workingDiv = document.getElementById('inputName');
+// 	workingDiv.style.visibility = 'hidden';
+// 	workingDiv.style.top = -1000;
+// 	workingDiv.style.left = -1000;
+// 	workingDiv = document.getElementById('inputMessageLength');
+// 	workingDiv.style.visibility = 'hidden';
+
+// 	for( var i = 0; i < data.array.length; i++ ) {
+// 		addUserToField(data.array[i]);
+// 	}
+
+// } //end showField

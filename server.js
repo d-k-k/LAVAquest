@@ -14,6 +14,7 @@ var httpServer   	= require('./src/httpServer');
 var WebSocketIO		= require('./src/wsio');
 
 //---------------------------------------------------------------------------Variable setup
+var debug 			= true;
 var hostAddress		= "127.0.0.1";
 var hostPort		= 9001;
 var httpServerApp	= new httpServer("public");
@@ -23,12 +24,13 @@ var clients			= [];
 var clientData		= [];
 
 //vars for mechanics.
-var mapWidth		= 600; //hard coded for now and needs to be checked later
-var mapHeight 		= 600;
+var mapWidth		= 500; //hard coded for now and needs to be checked later
+var mapHeight 		= 500;
 var pxPerSecond		= 100;
 var timeObject		= new Date();
 var startTime 		= null;
 var deltaTime		= null;
+
 
 
 
@@ -167,6 +169,7 @@ function wsClientSendKeyStatus(wsio, data) {
 		clientData[i].wsio.emit( 'movementUpdate', packetData );
 	}
 
+	//if(debug) { console.log( 'sending packet for player' + packetData.cid + ' reset location:' + packetData.x + ',' + packetData.y + ' hori' + packetData.moveHori + ' vert' + packetData.moveVert);}
 
 } //end class
 
@@ -202,8 +205,6 @@ function addClientData( wsio , data) {
 		moveVert: 'none'
 	};
 
-	clientData.push(newClientData);
-
 	var reducedData = {
 		cid: clientData.length,
 		name: data.name,
@@ -215,6 +216,11 @@ function addClientData( wsio , data) {
 		moveHori: 'none',
 		moveVert: 'none'
 	};
+
+	if(debug) {console.log('New entity starting at:' + reducedData.x + ',' + reducedData.y); }
+
+	clientData.push(newClientData);
+
 	return reducedData;
 } //end
 
@@ -230,10 +236,10 @@ function findClientDataIndexGivenWsio(wsio) {
 } 
 
 function sendClientListUpdates(wsio, passedId, reducedData) {
-	console.log( 'Server sending client list');
+	console.log( 'Server preparing to send client list');
 
 	var cid = findClientDataIndexGivenWsio(wsio);
-	if(cid !== passedId) { console.log('Error with id finder'); }
+	if(cid !== passedId) { console.log(); console.log('Error with id finder. checked values:' + cid + ',' + passedId); }
 
 	if ( cid < 0 ) { console.log("unable to find client data"); }
 	else {
@@ -243,19 +249,20 @@ function sendClientListUpdates(wsio, passedId, reducedData) {
 		var temp;
 
 		for(var i = 0; i < clientData.length; i++) {
-			if(i != cid) { clientData[i].wsio.emit( 'addUser', reducedData ); }
-			temp =  {
-				cid: clientData[i].cid,
-				name: clientData[i].name,
-				characterType: clientData[i].characterType,
-				hp: clientData[i].hp,
-				maxHp: clientData[i].maxHp,
-				x: clientData[i].x,
-				y: clientData[i].x,
-				moveHori: clientData[i].moveHori,
-				moveVert: clientData[i].moveVert
-			};
-			fullUserList.push(temp);
+			if(i != cid) { clientData[i].wsio.emit( 'addUser', reducedData );
+				temp =  {
+					cid: clientData[i].cid,
+					name: clientData[i].name,
+					characterType: clientData[i].characterType,
+					hp: clientData[i].hp,
+					maxHp: clientData[i].maxHp,
+					x: clientData[i].x,
+					y: clientData[i].x,
+					moveHori: clientData[i].moveHori,
+					moveVert: clientData[i].moveVert
+				};
+				fullUserList.push(temp);
+			}
 		}
 
 		//now send full user list to the new connected client

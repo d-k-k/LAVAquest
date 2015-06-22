@@ -38,6 +38,13 @@ function initializeKineticStage() {
 	backgroundLayer = new Kinetic.Layer();
 	stage.add(backgroundLayer);
 
+	var blackDrop = new Kinetic.Rect({
+		width: stage.width(),
+		height: stage.height(),
+		fill: '#AAB5FA'
+	});
+	backgroundLayer.add(blackDrop);
+
 	layer1 = new Kinetic.Layer();
 	stage.add(layer1);
 
@@ -64,7 +71,10 @@ function addThisClientAvatar(data) {
 	bindControls();
 
 	updateOneEntityScreenPositionBasedOnThisClient(thisClientKgr);
-}
+
+	if(debug) { console.log('--This client id:' + thisClientId ); }
+
+} //addThisClientAvatar
 
 
 
@@ -81,6 +91,11 @@ function bindControls() {
 
 function handleKeyDown(event) {
 	if(debug) { console.log('keydown from:' + event.type + '(' + event.key + ')'+ '(' + event.char + ')'+ '(' + event.charCode + ')'+ '(' + event.keyCode + ')' + '(' + event.location + ')') ; }
+
+
+
+	//currently the packet will cause an over write because it doesn't include a value for the opposite, meaning it will be undefined rather than null
+
 
 	switch(event.keyCode){
 		//	w the key. case doesn't matter since it uses the key code.
@@ -99,6 +114,14 @@ function handleKeyDown(event) {
 		case 68:
 			wsio.emit('clientSendKeyStatus', {pushStatus: 'press', moveHori:'right'});
 			break;
+
+		//p - debug activator
+		case 80:
+			thisClientKgr.showDebugVisuals = !(thisClientKgr.showDebugVisuals);
+			thisClientKgr.kDebugCanvasCoordinates.visible(thisClientKgr.showDebugVisuals);
+			thisClientKgr.kDebugWsCoordinates.visible(thisClientKgr.showDebugVisuals);
+			console.log('Debug visuals:' + thisClientKgr.showDebugVisuals);
+			break;
 	} //end switch keyCode
 
 } //end handleKeyDown
@@ -106,11 +129,7 @@ function handleKeyDown(event) {
 
 
 function handleKeyUp(event) {
-	if(debug) { console.log('keyUp from:' + event.type + '(' + event.key + ')'+ '(' + event.char + ')'+ '(' + event.charCode + ')'+ '(' + event.keyCode + ')' + '(' + event.location + ')') ; }
-
-
-	var workingEntity = clientTrackedKineticEntities[0];
-	var workingEntityGroup = workingEntity.kGroup;
+	//if(debug) { console.log('keyUp from:' + event.type + '(' + event.key + ')'+ '(' + event.char + ')'+ '(' + event.charCode + ')'+ '(' + event.keyCode + ')' + '(' + event.location + ')') ; }
 
 	switch(event.keyCode){
 		case 87: //	w 
@@ -184,13 +203,13 @@ function givenWsDataShiftBySpecifiedAmount( wsDataRef, xdiff, ydiff ) {
 		if(entityEntry.wsDataRef == wsDataRef) {
 			if( ydiff !== 0) {
 				entityEntry.kGroup.y(  entityEntry.kGroup.y() + ydiff );
-				if(ydiff < 0) { entityEntry.kSprite.animation('walkAway'); entityEntry.kSprite.start(); }
-				else { entityEntry.kSprite.animation('walkToward'); entityEntry.kSprite.start(); }
+				if(ydiff < 0 && entityEntry.kSprite.animation() !== 'walkAway') { entityEntry.kSprite.animation('walkAway'); entityEntry.kSprite.start(); }
+				else if(  ydiff > 0 &&entityEntry.kSprite.animation() !== 'walkToward') { entityEntry.kSprite.animation('walkToward'); entityEntry.kSprite.start(); }
 			}
 			if( xdiff !== 0) {
 				entityEntry.kGroup.x(  entityEntry.kGroup.x() + xdiff );
-				if(xdiff < 0) { entityEntry.kSprite.animation('walkLeft'); entityEntry.kSprite.start(); }
-				else { entityEntry.kSprite.animation('walkRight'); entityEntry.kSprite.start(); }
+				if(xdiff < 0 && entityEntry.kSprite.animation() !== 'walkLeft') { entityEntry.kSprite.animation('walkLeft'); entityEntry.kSprite.start(); }
+				else if( xdiff > 0 && entityEntry.kSprite.animation() !== 'walkRight') { entityEntry.kSprite.animation('walkRight'); entityEntry.kSprite.start(); }
 			}
 			if(xdiff == ydiff && xdiff == 0) {
 				if(entityEntry.kSprite.animation() == 'walkAway') { entityEntry.kSprite.animation( 'standAway' ); }
@@ -198,11 +217,97 @@ function givenWsDataShiftBySpecifiedAmount( wsDataRef, xdiff, ydiff ) {
 				else if(entityEntry.kSprite.animation() == 'walkLeft') { entityEntry.kSprite.animation( 'standLeft' ); }
 				else if(entityEntry.kSprite.animation() == 'walkRight') { entityEntry.kSprite.animation( 'standRight' ); }
 			}
+
+			entityEntry.kDebugWsCoordinates.text('wsCoord:' + entityEntry.wsDataRef.x + ',' +entityEntry.wsDataRef.y );
+			entityEntry.kDebugCanvasCoordinates.text('canvasCoord:' + entityEntry.kGroup.x() + ',' +entityEntry.kGroup.y() );
+
+
+			//the client should be locked in place.
+			if(entityEntry == thisClientKgr) { repositionAllEntitiesCorrectly(); }
+
+			return;
 		}
 	}
 
+	console.log('Error performing shift, wsDataRef not found');
+
+
 } //end givenWsDataShiftBySpecifiedAmount
 
+
+
+
+function repositionAllEntitiesCorrectly() {
+	var currentEntity;
+
+	for(var raec = 0; raec < clientTrackedKineticEntities.length; raec++) {
+		currentEntity = clientTrackedKineticEntities[raec];
+		if(currentEntity == thisClientKgr) {
+			currentEntity.kGroup.x( stage.width()/2 );
+			currentEntity.kGroup.y( stage.height()/2 );
+		}
+		else {
+			var xdiff = currentEntity.wsDataRef.x - thisClientKgr.wsDataRef.x;
+			var ydiff = currentEntity.wsDataRef.y - thisClientKgr.wsDataRef.y;
+
+			currentEntity.kGroup.x( stage.width()/2 + xdiff );
+			currentEntity.kGroup.y( stage.height()/2 + ydiff );
+		}
+
+	}
+} //end repositionAllEntitiesCorrectly
+
+
+/*
+Repositions this one entity correctly.
+This will readjust position of other elements if not client avatar.
+
+However if client avatar, then will have to go through all other elements and position accordingly.
+*/
+function repositionOneEntityCorrectly(currentWsData) {
+
+	var xdiff, ydiff;
+
+	//if this client, then need to reposition all other entities.
+	if(currentWsData == thisClientKgr.wsDataRef) {
+
+		console.log('this client reposition one entity');
+
+		for( var roec = 0; roec < clientTrackedKineticEntities.length; roec++) {
+			console.log('checking for nonself');
+			if( clientTrackedKineticEntities[roec].wsDataRef != currentWsData ) {
+
+				console.log('match index ' + roec);
+
+				xdiff = clientTrackedKineticEntities[roec].wsDataRef.x - thisClientKgr.wsDataRef.x;
+				ydiff = clientTrackedKineticEntities[roec].wsDataRef.y - thisClientKgr.wsDataRef.y;
+				clientTrackedKineticEntities[roec].kGroup.x( stage.width()/2 + xdiff );
+				clientTrackedKineticEntities[roec].kGroup.y( stage.height()/2 + ydiff );			
+			}
+		}
+
+	}
+
+	//else find the data for the given wsDataRef
+	else {
+
+
+		console.log('NOT this client reposition one entity');
+
+		for( var roec = 0; roec < clientTrackedKineticEntities.length; roec++) {
+			if( clientTrackedKineticEntities[roec].wsDataRef == currentWsData ) {
+				xdiff = currentWsData.x - thisClientKgr.wsDataRef.x;
+				ydiff = currentWsData.y - thisClientKgr.wsDataRef.y;
+				clientTrackedKineticEntities[roec].kGroup.x( stage.width()/2 + xdiff );
+				clientTrackedKineticEntities[roec].kGroup.y( stage.height()/2 + ydiff );			
+				break;
+			}
+		}
+	}//end else is not this client
+
+
+
+} //end repositionOneEntityCorrectly
 
 
 //-------------------------------------------------------------------------------------------------------------
@@ -229,6 +334,8 @@ Char Group
 */
 function makeEntity(fileLocation, name, layerToJoin, wsDataRef) {
 
+	if(debug) { console.log('Making an entity. Current count before this one:' + clientTrackedKineticEntities.length); }
+
 	var entityEntry = {};
 	entityEntry.name = name + "";
 	entityEntry.hp = cEntityBaseHp;
@@ -238,7 +345,7 @@ function makeEntity(fileLocation, name, layerToJoin, wsDataRef) {
 	entityEntry.kGroup = spriteGroup;
 
 	var animationSprite = makeSprite(fileLocation, entityEntry);
-	spriteGroup.add(animationSprite);
+	//spriteGroup.add(animationSprite);
 	entityEntry.kSprite = animationSprite;
 
 	var nameText = new Kinetic.Text({
@@ -274,6 +381,25 @@ function makeEntity(fileLocation, name, layerToJoin, wsDataRef) {
 
 	layerToJoin.add( spriteGroup );
 
+	// visual debug helper
+	entityEntry.showDebugVisuals = false;
+	var debugWsCoordinates =  new Kinetic.Text({
+		text: 'wsCoord: not Initialized',
+		fontSize: cNameTextSize,
+		fontFamily: 'Ariel',
+		fill: 'black'
+	});
+	entityEntry.kDebugWsCoordinates = debugWsCoordinates;
+	spriteGroup.add(debugWsCoordinates);
+	var debugCanvasCoordinates =  new Kinetic.Text({
+		text: 'canvasCoord: not Initialized',
+		fontSize: cNameTextSize,
+		fontFamily: 'Ariel',
+		fill: 'black'
+	});
+	entityEntry.kDebugCanvasCoordinates = debugCanvasCoordinates;
+	spriteGroup.add(debugCanvasCoordinates);
+
 
 	//
 	// var pointOfReferenceOrigin = new Kinetic.Rect({ x: -1, y: -1, width: 2, height: 2, fill: 'red'});
@@ -303,15 +429,14 @@ function makeSprite(fileLocation, entity) {
 	//setup listener for the image.
 	imgObj.onload = function() {
 
-		console.log('img callback btw, this is:' + this);
-		console.dir(this);
+		// console.log('img callback btw, this is:' + this);
+		// console.dir(this);
 
 		//when an image object finishes loading
 
 		for(var i = 0; i < clientTrackedKineticEntities.length; i++) {
 			if ( clientTrackedKineticEntities[i].imgObj === this) {
 				clientTrackedKineticEntities[i].kSprite.image(this);
-				clientTrackedKineticEntities[i].kSprite.animation('walkToward');
 				clientTrackedKineticEntities[i].kSprite.animations( {
 					standToward: 	[ 	0,	0,	32,	48 ],
 					standLeft: 		[ 	0,	48,	32,	48 ],
@@ -324,12 +449,14 @@ function makeSprite(fileLocation, entity) {
 					walkAway: 	[ 	0,	144,	32,	48, 	32,	144,	32,	48, 	64,	144,	32,	48, 	96,	144,	32,	48 	]
 
 				});
+				clientTrackedKineticEntities[i].kSprite.animation('standToward');
 				clientTrackedKineticEntities[i].kSprite.frameRate(4);
 				clientTrackedKineticEntities[i].kSprite.frameIndex(0);
+				clientTrackedKineticEntities[i].kGroup.add(clientTrackedKineticEntities[i].kSprite);
 
-				console.log('Image match found and supposedly sprite updated.');
 				entitySpacingRecheckBasedOnSprite(clientTrackedKineticEntities[i]);
-				clientTrackedKineticEntities[i].kSprite.start();
+				//clientTrackedKineticEntities[i].kSprite.start();
+				//console.log('Image match found and supposedly sprite updated.');
 				return;
 			}
 		}
@@ -389,6 +516,19 @@ function entitySpacingRecheckBasedOnSprite(entityEntry) {
 	workingElement = entityEntry.kHpBar;
 	workingElement.x( entityEntry.kHpContainer.x() );
 	workingElement.y( entityEntry.kHpContainer.y() );
+
+	//visual debuggers
+	workingElement = entityEntry.kDebugCanvasCoordinates;
+	workingElement.x( entityEntry.kHpContainer.x() );
+	workingElement.y( entityEntry.kHpContainer.y() +  workingElement.getTextHeight() );
+	workingElement = entityEntry.kDebugWsCoordinates;
+	workingElement.x( entityEntry.kHpContainer.x() );
+	workingElement.y( entityEntry.kHpContainer.y() +  workingElement.getTextHeight() + workingElement.getTextHeight() );
+
+
+	entityEntry.kDebugCanvasCoordinates.visible(entityEntry.showDebugVisuals);
+	entityEntry.kDebugWsCoordinates.visible(entityEntry.showDebugVisuals);
+
 
 } //end fillOutKineticSpacing
 
