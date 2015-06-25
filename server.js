@@ -22,11 +22,14 @@ var mainServer		= null;
 var wsioServer		= null;
 var clients			= [];
 var clientData		= [];
+var groundBlocks	= null;
 
 //vars for mechanics.
 var mapWidth		= 500; //hard coded for now and needs to be checked later
 var mapHeight 		= 500;
 var pxPerSecond		= 100;
+var cSpriteWidth	= 32;
+var cSpriteHeight	= 48;
 var timeObject		= new Date();
 var startTime 		= null;
 var deltaTime		= null;
@@ -69,6 +72,8 @@ deltaTime = 0;
 setInterval( mainUpdater, 20); //ms. 20 = 50fps.
 
 
+groundBlocks = generateLevel1Ground();
+
 
 
 //---------------------------------------------------------------------------Function definitions
@@ -103,6 +108,30 @@ function mainUpdater() {
 		if  ( clientData[i].moveVert === 'up' ) { clientData[i].y--; }
 		else if  ( clientData[i].moveVert === 'down' ) { clientData[i].y++; }
 
+		if ( checkIfEntityLeavingGround(clientData[i]) ) {
+
+			if ( clientData[i].moveHori === 'left' ) { clientData[i].x++;  clientData[i].moveHori = 'none';}
+			else if  ( clientData[i].moveHori === 'right' ) { clientData[i].x--;  clientData[i].moveHori = 'none';}
+			if  ( clientData[i].moveVert === 'up' ) { clientData[i].y++;  clientData[i].moveVert = 'none'; }
+			else if  ( clientData[i].moveVert === 'down' ) { clientData[i].y--;  clientData[i].moveVert = 'none'; }
+
+
+			var packetData = {
+				cid: clientData[i].cid,
+				x: clientData[i].x,
+				y: clientData[i].y,
+				moveHori: clientData[i].moveHori,
+				moveVert: clientData[i].moveVert
+			}
+
+			for(var j =0; j < clientData.length; j++) {
+				clientData[j].wsio.emit( 'movementUpdate', packetData );
+			}
+
+
+
+		}
+
 	}
 
 } //end main updater
@@ -123,6 +152,8 @@ function wsAddClient(wsio, data) {
 	var newClientData = addClientData(wsio, data);
 	wsio.emit('serverAccepted', {clientData: newClientData} );
 	sendClientListUpdates(wsio, newClientData.cid, newClientData);
+
+	wsio.emit('groundBlocks', { groundArray: groundBlocks });
 }
 
 
@@ -276,8 +307,139 @@ function sendClientListUpdates(wsio, passedId, reducedData) {
 
 } //end sendClientListUpdates
 
+//---------------------------------------------------------------------------Ground functions
+
+
+//this function activates after the generators, but is used more often.
+function checkIfEntityLeavingGround( entity ) {
+
+	var rect1, rect2;
+	rect1 = {};
+	rect2 = {};
+
+	rect2.cx = entity.x;
+	rect2.cy = entity.y;
+	rect2.width = cSpriteWidth;
+	rect2.height = cSpriteHeight;
+
+	for ( var i = 0; i < groundBlocks.length; i++ ) {
+
+		rect1.cx = groundBlocks[i].cx;
+		rect1.cy = groundBlocks[i].cy;
+		rect1.width = groundBlocks[i].width;
+		rect1.height = groundBlocks[i].height;
+
+		if( isSecondRectangleWithinFirst(rect1, rect2) ){
+			return false;
+		}
+
+	}
+
+	return true;
+
+} //end checkIfEntityLeavingGround
+
+
+
+//basic box generators
+
+function generateLevel1Ground() {
+
+	//players start at 250,250, placing initial ground plot around them.
+
+	var floorContainer = [];
+	var floorPiece = {};
+	
+
+	//create left area that encompases player.
+	floorPiece.cx = 250;
+	floorPiece.cy = 250;
+	floorPiece.width = cSpriteWidth * 15;
+	floorPiece.height = cSpriteHeight * 9;
+	floorContainer.push(floorPiece);
+
+	//create top bridge
+	floorPiece = {};
+	floorPiece.cx = 250 + (cSpriteWidth * 15);
+	floorPiece.cy = 250 - (cSpriteWidth * 3);
+	floorPiece.width = cSpriteWidth * 15;
+	floorPiece.height = cSpriteWidth * 3;
+	floorContainer.push(floorPiece);
+
+	//create bottom bridge
+	floorPiece = {};
+	floorPiece.cx = 250 + (cSpriteWidth * 15);
+	floorPiece.cy = 250 + (cSpriteWidth * 3);
+	floorPiece.width = cSpriteWidth * 15;
+	floorPiece.height = cSpriteWidth * 3;
+	floorContainer.push(floorPiece);
+
+	//create right area
+	floorPiece = {};
+	floorPiece.cx = 250 + (cSpriteWidth * 30);
+	floorPiece.cy = 250;
+	floorPiece.width = cSpriteWidth * 15;
+	floorPiece.height = cSpriteHeight * 15;
+	floorContainer.push(floorPiece);
+
+
+	return floorContainer;
+
+} //end generateLevel1Ground
+
+
+
+
+
 
 //---------------------------------------------------------------------------Utility functions
+
+/*
+Takes two objects with attributes
+cx, cy, width, height.
+*/
+function isSecondRectangleWithinFirst(firstRect, secondRect) {
+
+	if( firstRect.cx - firstRect.width/2 < secondRect.cx - secondRect.width/2 ) {
+		if(firstRect.cx + firstRect.width/2 > secondRect.cx + secondRect.width/2) {
+
+			if(firstRect.cy - firstRect.height/2 < secondRect.cy - secondRect.height/2) {
+				if(firstRect.cy + firstRect.height/2 > secondRect.cy + secondRect.height/2) {
+
+					return true;
+
+				}
+			}
+
+		}
+	}
+
+	return false;
+
+} //end
+
+
+/*
+Takes two objects with attributes
+cx, cy, width, height.
+*/
+function areRectanglesTouching(firstRect, secondRect) {
+
+	if( firstRect.cx - firstRect.width/2 <= secondRect.cx + secondRect.width/2 ) {
+		if(firstRect.cx + firstRect.width/2 >= secondRect.cx - secondRect.width/2) {
+
+			if(firstRect.cy - firstRect.height/2 <= secondRect.cy + secondRect.height/2) {
+				if(firstRect.cy + firstRect.height/2 >= secondRect.cy - secondRect.height/2) {
+
+					return true;
+
+				}
+			}
+
+		}
+	}
+	return false;
+} //end
 
 
 function removeElement(list, elem) {

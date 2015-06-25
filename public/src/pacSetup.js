@@ -111,6 +111,7 @@ function setupListeners() {
 
 	wsio.on('addUser', 			wsAddUser );
 	wsio.on('fullUserList', 	wsFullUserList );
+	wsio.on('groundBlocks', 	wsGroundBlocks );
 	wsio.on('movementUpdate', 	wsMovementUpdate);
 
 
@@ -138,6 +139,20 @@ function wsFullUserList(data) {
 		console.log('--Name:' + data.array[i].name + '. x:' + data.array[i].x + '. y:' + data.array[i].y + '. moveHori:' + data.array[i].moveHori+ '. moveVert:' + data.array[i].moveVert );
 	}
 }
+
+
+function wsGroundBlocks(data) {
+
+	if(debug) {
+		console.log("Generating ground blocks:");
+		for(var i = 0; i < data.groundArray.length; i++) {
+			console.log( data.groundArray[i].cx + ',' +  data.groundArray[i].cy + ' center with dimensions: ' + data.groundArray[i].width + ',' + data.groundArray[i].height);
+		}
+	} //end debug output
+
+	createGroundTiles(data.groundArray);
+}
+
 
 function wsMovementUpdate(data) {
 	// if(debug){console.log("Movement update packet");}

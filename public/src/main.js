@@ -1,4 +1,4 @@
-
+	
 //-------------------------------------------------------------------------------------------------------------
 
 //kinetic manipulation
@@ -6,18 +6,22 @@ var	stage;
 var backgroundLayer;
 var layer1;
 
+var groundTiles 			= [];
+var groundTileImage;
+var groundGroup;
+
 
 //constants
-var cNameTextSize = 10;
-var cEntityBaseHp = 100;
-var cSpriteStartingWidth = 32;
-var cSpriteStartingHeight = 48;
+var cNameTextSize 			= 10;
+var cEntityBaseHp 			= 100;
+var cSpriteStartingWidth 	= 32;
+var cSpriteStartingHeight 	= 48;
 
 
 //
 var clientTrackedKineticEntities = [];
-var thisClientId = -1;
-var thisClientKgr = null;
+var thisClientId 			= -1;
+var thisClientKgr 			= null;
 
 
 
@@ -35,15 +39,19 @@ function initializeKineticStage() {
 		container: 'canvas'
 	});
 
+	//prep the background
+	groundTileImage = new Image();
+	groundTileImage.src = 'img/floorBoard32x48.png';
 	backgroundLayer = new Kinetic.Layer();
 	stage.add(backgroundLayer);
-
-	var blackDrop = new Kinetic.Rect({
+	var backDrop = new Kinetic.Rect({
 		width: stage.width(),
 		height: stage.height(),
 		fill: '#AAB5FA'
 	});
-	backgroundLayer.add(blackDrop);
+	backgroundLayer.add(backDrop);
+	groundGroup = new Kinetic.Group();
+	backgroundLayer.add(groundGroup);
 
 	layer1 = new Kinetic.Layer();
 	stage.add(layer1);
@@ -172,6 +180,40 @@ function addOtherClientAvatar(data) {
 	updateOneEntityScreenPositionBasedOnThisClient( clientTrackedKineticEntities[ clientTrackedKineticEntities.length - 1 ] );
 }
 
+function createGroundTiles(groundArray) {
+	var xstart, ystart, xend, yend;
+	var kineticImage;
+
+	//for each ground piece
+	for(var cgt = 0; cgt < groundArray.length; cgt++) {
+
+		xstart = groundArray[cgt].cx - groundArray[cgt].width/2;
+		ystart = groundArray[cgt].cy - groundArray[cgt].height/2;
+		xend = xstart + groundArray[cgt].width;
+		yend = ystart + groundArray[cgt].height;
+
+		for( var ty = ystart; ty < yend; ty += cSpriteStartingHeight ) {
+			for( var tx = xstart; tx < xend; tx += cSpriteStartingWidth ) {
+
+				kineticImage = new Kinetic.Image({
+					x: tx,
+					y: ty,
+					image: groundTileImage,
+					width: cSpriteStartingWidth,
+					height: cSpriteStartingHeight
+				});
+
+				kineticImage.mapx = tx;
+				kineticImage.mapy = ty;
+
+				groundTiles.push( kineticImage );
+				groundGroup.add( kineticImage );
+			}
+		}
+	}
+
+} //end createGroundTiles
+
 
 //-------------------------------------------------------------------------------------------------------------
 
@@ -255,6 +297,21 @@ function repositionAllEntitiesCorrectly() {
 		}
 
 	}
+
+	//maybe not needed since can just move the group, should start with top left as 0,0.
+	// for(var raec = 0; raec < groundTiles.length; raec++) {
+		
+	// 	var xdiff = groundTiles[raec].mapx - thisClientKgr.wsDataRef.x;
+	// 	var ydiff = groundTiles[raec].mapy - thisClientKgr.wsDataRef.y;
+
+	// 	groundTiles[raec].x( stage.width()/2 + xdiff );
+	// 	groundTiles[raec].y( stage.height()/2 + ydiff );
+
+	// }
+
+	groundGroup.x( stage.width()/2 - thisClientKgr.wsDataRef.x );
+	groundGroup.y( stage.height()/2 - thisClientKgr.wsDataRef.y );
+
 } //end repositionAllEntitiesCorrectly
 
 
@@ -271,13 +328,13 @@ function repositionOneEntityCorrectly(currentWsData) {
 	//if this client, then need to reposition all other entities.
 	if(currentWsData == thisClientKgr.wsDataRef) {
 
-		console.log('this client reposition one entity');
+		//console.log('this client reposition one entity');
 
 		for( var roec = 0; roec < clientTrackedKineticEntities.length; roec++) {
-			console.log('checking for nonself');
+			//console.log('checking for nonself');
 			if( clientTrackedKineticEntities[roec].wsDataRef != currentWsData ) {
 
-				console.log('match index ' + roec);
+				//console.log('match index ' + roec);
 
 				xdiff = clientTrackedKineticEntities[roec].wsDataRef.x - thisClientKgr.wsDataRef.x;
 				ydiff = clientTrackedKineticEntities[roec].wsDataRef.y - thisClientKgr.wsDataRef.y;
