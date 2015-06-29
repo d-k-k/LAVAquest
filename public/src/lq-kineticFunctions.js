@@ -1,28 +1,6 @@
 	
 //-------------------------------------------------------------------------------------------------------------
 
-//kinetic manipulation
-var	stage;
-var backgroundLayer;
-var layer1;
-
-var groundTiles 			= [];
-var groundTileImage;
-var groundGroup;
-
-
-//constants
-var cNameTextSize 			= 10;
-var cEntityBaseHp 			= 100;
-var cSpriteStartingWidth 	= 32;
-var cSpriteStartingHeight 	= 48;
-
-
-//
-var clientTrackedKineticEntities = [];
-var thisClientId 			= -1;
-var thisClientKgr 			= null;
-
 
 
 //-------------------------------------------------------------------------------------------------------------
@@ -76,7 +54,8 @@ function addThisClientAvatar(data) {
 
 	clientTrackedKineticEntities.push(thisClientKgr);
 
-	bindControls();
+	bindControls(); //don't try to send commands until this client gets avatar creation confirmed.
+	//method located in updaters
 
 	updateOneEntityScreenPositionBasedOnThisClient(thisClientKgr);
 
@@ -86,89 +65,6 @@ function addThisClientAvatar(data) {
 
 
 
-
-function bindControls() {
-	document.addEventListener('keydown', handleKeyDown);
-	document.addEventListener('keyup', handleKeyUp);
-	document.addEventListener('click', handleClick);
-
-	//correctly route right clicks to handler.
-	window.oncontextmenu = function (e) { handleClick(e); return false; }
-
-} //end bindControls
-
-function handleKeyDown(event) {
-	if(debug) { console.log('keydown from:' + event.type + '(' + event.key + ')'+ '(' + event.char + ')'+ '(' + event.charCode + ')'+ '(' + event.keyCode + ')' + '(' + event.location + ')') ; }
-
-
-
-	//currently the packet will cause an over write because it doesn't include a value for the opposite, meaning it will be undefined rather than null
-
-
-	switch(event.keyCode){
-		//	w the key. case doesn't matter since it uses the key code.
-		case 87:
-			wsio.emit('clientSendKeyStatus', {pushStatus: 'press', moveVert:'up'});
-			break;
-		//	a
-		case 65:
-			wsio.emit('clientSendKeyStatus', {pushStatus: 'press', moveHori:'left'});
-			break;
-		//	s
-		case 83:
-			wsio.emit('clientSendKeyStatus', {pushStatus: 'press', moveVert:'down'});
-			break;
-		//	d
-		case 68:
-			wsio.emit('clientSendKeyStatus', {pushStatus: 'press', moveHori:'right'});
-			break;
-
-		//p - debug activator
-		case 80:
-			thisClientKgr.showDebugVisuals = !(thisClientKgr.showDebugVisuals);
-			thisClientKgr.kDebugCanvasCoordinates.visible(thisClientKgr.showDebugVisuals);
-			thisClientKgr.kDebugWsCoordinates.visible(thisClientKgr.showDebugVisuals);
-			console.log('Debug visuals:' + thisClientKgr.showDebugVisuals);
-			break;
-	} //end switch keyCode
-
-} //end handleKeyDown
-
-
-
-function handleKeyUp(event) {
-	//if(debug) { console.log('keyUp from:' + event.type + '(' + event.key + ')'+ '(' + event.char + ')'+ '(' + event.charCode + ')'+ '(' + event.keyCode + ')' + '(' + event.location + ')') ; }
-
-	switch(event.keyCode){
-		case 87: //	w 
-			wsio.emit('clientSendKeyStatus', {pushStatus: 'release', moveVert:'up'});
-			break;
-		case 65: //a
-			wsio.emit('clientSendKeyStatus', {pushStatus: 'release', moveVert:'left'});
-			break;
-		case 83: //s
-			wsio.emit('clientSendKeyStatus', {pushStatus: 'release', moveVert:'down'});
-			break;
-		case 68: //d
-			wsio.emit('clientSendKeyStatus', {pushStatus: 'release', moveVert:'right'});
-			break;
-	} //end switch keyCode
-
-} //end handleKeyUp
-
-
-function handleClick(event) {
-
-	if(debug) { console.log('click at:' 
-		+ event.clientX 
-		+ '(' + event.screenX + '), '
-
-		+ event.clientY
-		+ '(' + event.screenY + ')'
-		+ ' button:' +  event.button) ; }
-
-
-} //end handleClick
 
 
 function addOtherClientAvatar(data) {

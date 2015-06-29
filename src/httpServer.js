@@ -1,6 +1,4 @@
 
-
-
 'use strict';
 
 var url 	= require('url');
@@ -34,7 +32,7 @@ function HttpServer(publicDirectory, debug) {
  */
 HttpServer.prototype.onreq = function(req, res) {
 
-	global.printTimeCounter(req);
+	//global.printTimeCounter(req);
 
 	if (req.method === "GET") {
 		var reqURL = url.parse(req.url);

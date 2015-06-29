@@ -12,6 +12,8 @@ var spawn 			= require('child_process').spawn;
 
 var httpServer   	= require('./src/httpServer');
 var WebSocketIO		= require('./src/wsio');
+var utils			= require('./src/utils');
+var levelControl	= require('./src/levelFunctions');
 
 //---------------------------------------------------------------------------Variable setup
 var debug 			= true;
@@ -35,18 +37,19 @@ var startTime 		= null;
 var deltaTime		= null;
 
 
+//node.js has a special variable called "global" which is visible throughout the other module files.
+global.cSpriteWidth = cSpriteWidth;
+global.cSpriteHeight = cSpriteHeight;
 
 
-//node.js has a special variable called "global" which is visible throughout the other files.
 
 
-//---------------------------------------------------------------------------Code start
+
+//-------------------------------------------------------------Code start
 
 //create http listener
-
 mainServer = http.createServer( httpServerApp.onrequest ).listen(hostPort);
 console.log('Server listening to port:'+hostPort);
-
 
 //create ws listener
 wsioServer = new WebSocketIO.Server( { server: mainServer } );
@@ -55,36 +58,63 @@ wsioServer.onconnection(openWebSocketClient);
 //create timer counter in global. 
 global.timeCounter = 0;
 
-//Test to create something that happens at an interval
+//Create an recurring function call.
 setInterval( function () {
 		global.timeCounter++;
 		console.log(global.timeCounter * 5);
-
-	}
-	, 5000);
-
-
-
-//
+	 }
+	, 5000); 
 startTime = timeObject.getTime();
 deltaTime = 0;
 
+//Call the mainUpdater function.
 setInterval( mainUpdater, 20); //ms. 20 = 50fps.
 
-
-groundBlocks = generateLevel1Ground();
-
+groundBlocks = levelControl.generateLevel1Ground();
 
 
-//---------------------------------------------------------------------------Function definitions
 
 
-global.printTimeCounter = function printTimeCounter (req) {
-	console.log ( "Request at time:" + global.timeCounter );
-	//console.log ( req );
-}
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//------------------------------------------------------------------------------------------------------------------
+//From this point on are functions.
+//------------------------------------------------------------------------------------------------------------------
+
+
+
+//old function that was used to test global works.
+global.printTimeCounter = function printTimeCounter (req) { console.log ( "Request at time:" + global.timeCounter ); }
+
+
+
+//--------------------------------------------------------------------------- WebSocket(ws) related functions 
+
+
+/*
+Called whenever a connection is made.
+This happens on first contact through webpage entry. Regardless of if the client sends a packet.
+*/
 function openWebSocketClient(wsio) {
 	console.log( ">Connection from: " + wsio.id + " (" + wsio.clientType + " " + wsio.clientID+ ")");
 	wsio.onclose(closeWebSocketClient);
@@ -92,52 +122,19 @@ function openWebSocketClient(wsio) {
 }
 
 
+/*
+Cleanup for when a connection closes.
+This isn't complete.
+TODO
+*/
 function closeWebSocketClient(wsio) {
 	console.log( ">Disconnect" + wsio.id + " (" + wsio.clientType + " " + wsio.clientID+ ")");
 
-	removeElement(clients, wsio);
+	utils.removeArrayElement(clients, wsio);
 } //end closeWebSocketClient
 
 
-function mainUpdater() {
 
-	for(var i = 0; i < clientData.length; i++) {
-
-		if ( clientData[i].moveHori === 'left' ) { clientData[i].x--; }
-		else if  ( clientData[i].moveHori === 'right' ) { clientData[i].x++; }
-		if  ( clientData[i].moveVert === 'up' ) { clientData[i].y--; }
-		else if  ( clientData[i].moveVert === 'down' ) { clientData[i].y++; }
-
-		if ( checkIfEntityLeavingGround(clientData[i]) ) {
-
-			if ( clientData[i].moveHori === 'left' ) { clientData[i].x++;  clientData[i].moveHori = 'none';}
-			else if  ( clientData[i].moveHori === 'right' ) { clientData[i].x--;  clientData[i].moveHori = 'none';}
-			if  ( clientData[i].moveVert === 'up' ) { clientData[i].y++;  clientData[i].moveVert = 'none'; }
-			else if  ( clientData[i].moveVert === 'down' ) { clientData[i].y--;  clientData[i].moveVert = 'none'; }
-
-
-			var packetData = {
-				cid: clientData[i].cid,
-				x: clientData[i].x,
-				y: clientData[i].y,
-				moveHori: clientData[i].moveHori,
-				moveVert: clientData[i].moveVert
-			}
-
-			for(var j =0; j < clientData.length; j++) {
-				clientData[j].wsio.emit( 'movementUpdate', packetData );
-			}
-
-
-
-		}
-
-	}
-
-} //end main updater
-
-
-//---------------------------------------------------------------------------websocket listener functions
 
 /*
 Params
@@ -155,12 +152,6 @@ function wsAddClient(wsio, data) {
 
 	wsio.emit('groundBlocks', { groundArray: groundBlocks });
 }
-
-
-function wsPing(wsio, data) {
-	console.log('---wsPing:' + data.time);
-	wsio.emit('serverPingBack', data);
-} //end class
 
 
 function wsConsoleLog(wsio, data) {
@@ -207,18 +198,96 @@ function wsClientSendKeyStatus(wsio, data) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------the mainUpdater function
+
+
+
+
+function mainUpdater() {
+
+
+	for(var i = 0; i < clientData.length; i++) {
+
+		if ( clientData[i].moveHori === 'left' ) { clientData[i].x--; }
+		else if  ( clientData[i].moveHori === 'right' ) { clientData[i].x++; }
+		if  ( clientData[i].moveVert === 'up' ) { clientData[i].y--; }
+		else if  ( clientData[i].moveVert === 'down' ) { clientData[i].y++; }
+
+		if ( levelControl.checkIfEntityLeavingGround(clientData[i], groundBlocks) ) {
+
+			if ( clientData[i].moveHori === 'left' ) { clientData[i].x++;  clientData[i].moveHori = 'none';}
+			else if  ( clientData[i].moveHori === 'right' ) { clientData[i].x--;  clientData[i].moveHori = 'none';}
+			if  ( clientData[i].moveVert === 'up' ) { clientData[i].y++;  clientData[i].moveVert = 'none'; }
+			else if  ( clientData[i].moveVert === 'down' ) { clientData[i].y--;  clientData[i].moveVert = 'none'; }
+
+
+			var packetData = {
+				cid: clientData[i].cid,
+				x: clientData[i].x,
+				y: clientData[i].y,
+				moveHori: clientData[i].moveHori,
+				moveVert: clientData[i].moveVert
+			}
+
+			for(var j =0; j < clientData.length; j++) {
+				clientData[j].wsio.emit( 'movementUpdate', packetData );
+			}
+
+
+
+		}
+
+	}
+
+} //end main updater
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //---------------------------------------------------------------------------Client data manipulation functions
+
 
 
 /*
 When receiving a packet of the named type, call the function.
 */
 function setupListeners(wsio) {
-	
-
 	wsio.on('consoleLog',				wsConsoleLog);
 	wsio.on('clientSendKeyStatus',		wsClientSendKeyStatus);
-
 } //end setupListeners
 
 
@@ -307,204 +376,8 @@ function sendClientListUpdates(wsio, passedId, reducedData) {
 
 } //end sendClientListUpdates
 
-//---------------------------------------------------------------------------Ground functions
 
 
-//this function activates after the generators, but is used more often.
-function checkIfEntityLeavingGround( entity ) {
 
-	var rect1, rect2;
-	rect1 = {};
-	rect2 = {};
 
-	rect2.cx = entity.x;
-	rect2.cy = entity.y;
-	rect2.width = cSpriteWidth;
-	rect2.height = cSpriteHeight;
 
-	for ( var i = 0; i < groundBlocks.length; i++ ) {
-
-		rect1.cx = groundBlocks[i].cx;
-		rect1.cy = groundBlocks[i].cy;
-		rect1.width = groundBlocks[i].width;
-		rect1.height = groundBlocks[i].height;
-
-		if( isSecondRectangleWithinFirst(rect1, rect2) ){
-			return false;
-		}
-
-	}
-
-	return true;
-
-} //end checkIfEntityLeavingGround
-
-
-
-//basic box generators
-
-function generateLevel1Ground() {
-
-	//players start at 250,250, placing initial ground plot around them.
-
-	var floorContainer = [];
-	var floorPiece = {};
-	
-
-	//create left area that encompases player.
-	floorPiece.cx = 250;
-	floorPiece.cy = 250;
-	floorPiece.width = cSpriteWidth * 15;
-	floorPiece.height = cSpriteHeight * 9;
-	floorContainer.push(floorPiece);
-
-	//create top bridge
-	floorPiece = {};
-	floorPiece.cx = 250 + (cSpriteWidth * 15);
-	floorPiece.cy = 250 - (cSpriteWidth * 3);
-	floorPiece.width = cSpriteWidth * 15;
-	floorPiece.height = cSpriteWidth * 3;
-	floorContainer.push(floorPiece);
-
-	//create bottom bridge
-	floorPiece = {};
-	floorPiece.cx = 250 + (cSpriteWidth * 15);
-	floorPiece.cy = 250 + (cSpriteWidth * 3);
-	floorPiece.width = cSpriteWidth * 15;
-	floorPiece.height = cSpriteWidth * 3;
-	floorContainer.push(floorPiece);
-
-	//create right area
-	floorPiece = {};
-	floorPiece.cx = 250 + (cSpriteWidth * 30);
-	floorPiece.cy = 250;
-	floorPiece.width = cSpriteWidth * 15;
-	floorPiece.height = cSpriteHeight * 15;
-	floorContainer.push(floorPiece);
-
-
-	return floorContainer;
-
-} //end generateLevel1Ground
-
-
-
-
-
-
-//---------------------------------------------------------------------------Utility functions
-
-/*
-Takes two objects with attributes
-cx, cy, width, height.
-*/
-function isSecondRectangleWithinFirst(firstRect, secondRect) {
-
-	if( firstRect.cx - firstRect.width/2 < secondRect.cx - secondRect.width/2 ) {
-		if(firstRect.cx + firstRect.width/2 > secondRect.cx + secondRect.width/2) {
-
-			if(firstRect.cy - firstRect.height/2 < secondRect.cy - secondRect.height/2) {
-				if(firstRect.cy + firstRect.height/2 > secondRect.cy + secondRect.height/2) {
-
-					return true;
-
-				}
-			}
-
-		}
-	}
-
-	return false;
-
-} //end
-
-
-/*
-Takes two objects with attributes
-cx, cy, width, height.
-*/
-function areRectanglesTouching(firstRect, secondRect) {
-
-	if( firstRect.cx - firstRect.width/2 <= secondRect.cx + secondRect.width/2 ) {
-		if(firstRect.cx + firstRect.width/2 >= secondRect.cx - secondRect.width/2) {
-
-			if(firstRect.cy - firstRect.height/2 <= secondRect.cy + secondRect.height/2) {
-				if(firstRect.cy + firstRect.height/2 >= secondRect.cy - secondRect.height/2) {
-
-					return true;
-
-				}
-			}
-
-		}
-	}
-	return false;
-} //end
-
-
-function removeElement(list, elem) {
-	if(list.indexOf(elem) >= 0){
-		moveElementToEnd(list, elem);
-		list.pop();
-	}
-}
-
-function moveElementToEnd(list, elem) {
-	var i;
-	var pos = list.indexOf(elem);
-	if(pos < 0) return;
-	for(i=pos; i<list.length-1; i++){
-		list[i] = list[i+1];
-	}
-	list[list.length-1] = elem;
-}
-
-
-
-
-//---------------------------------------------------------------------------Not used functions
-
-function executeConsoleCommand( cmd ) {
-	var child;
-	child = exec(cmd, function (error, stdout, stderr) {
-		sys.print('stdout: ' + stdout);
-		sys.print('stderr: ' + stderr);
-		if (error !== null) {
-			console.log('Command> exec error: ' + error);
-		}
-	});
-}
-
-
-
-function executeScriptFile( file ) {
-
-	output = "";
-
-    file = path.normalize(file); // convert Unix notation to windows
-    console.log('Launching script ', file);
-
-    var proc = spawn(file, []);
-
-    proc.stdout.on('data', function (data) {
-            console.log('stdout: ' + data);
-            output = output + data;
-    });
-    proc.stderr.on('data', function (data) {
-            console.log('stderr: ' + data);
-    });
-    proc.on('exit', function (code) {
-        console.log('child process exited with code ' + code);
-        //if (socket) socket.emit('return', {status: true, stdout: output});
-    });
-
-
-
-    console.log("Setting up delayed process kill");
-
-    setTimeout( function(){ proc.kill(); console.log("\nKilling process"); }, 6000);
-
-
-
-    return proc;
-}
