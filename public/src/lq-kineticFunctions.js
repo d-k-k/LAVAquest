@@ -11,7 +11,7 @@ function initializeKineticStage() {
 	var workingDiv = document.getElementById('topDiv');
 	workingDiv.innerHTML = '<div id=canvas></div>';
 
-	stage = new Kinetic.Stage({
+	stage = new Konva.Stage({
 		width: 500,
 		height: 500,
 		container: 'canvas'
@@ -20,18 +20,18 @@ function initializeKineticStage() {
 	//prep the background
 	groundTileImage = new Image();
 	groundTileImage.src = 'img/floorBoard32x48.png';
-	backgroundLayer = new Kinetic.Layer();
+	backgroundLayer = new Konva.Layer();
 	stage.add(backgroundLayer);
-	var backDrop = new Kinetic.Rect({
+	var backDrop = new Konva.Rect({
 		width: stage.width(),
 		height: stage.height(),
 		fill: '#AAB5FA'
 	});
 	backgroundLayer.add(backDrop);
-	groundGroup = new Kinetic.Group();
+	groundGroup = new Konva.Group();
 	backgroundLayer.add(groundGroup);
 
-	layer1 = new Kinetic.Layer();
+	layer1 = new Konva.Layer();
 	stage.add(layer1);
 
 	stage.draw();
@@ -91,7 +91,7 @@ function createGroundTiles(groundArray) {
 		for( var ty = ystart; ty < yend; ty += cSpriteStartingHeight ) {
 			for( var tx = xstart; tx < xend; tx += cSpriteStartingWidth ) {
 
-				kineticImage = new Kinetic.Image({
+				kineticImage = new Konva.Image({
 					x: tx,
 					y: ty,
 					image: groundTileImage,
@@ -294,14 +294,14 @@ function makeEntity(fileLocation, name, layerToJoin, wsDataRef) {
 	entityEntry.hp = cEntityBaseHp;
 	entityEntry.wsDataRef = wsDataRef;
 
-	var spriteGroup = new Kinetic.Group();
+	var spriteGroup = new Konva.Group();
 	entityEntry.kGroup = spriteGroup;
 
 	var animationSprite = makeSprite(fileLocation, entityEntry);
 	//spriteGroup.add(animationSprite);
 	entityEntry.kSprite = animationSprite;
 
-	var nameText = new Kinetic.Text({
+	var nameText = new Konva.Text({
 		text: name,
 		fontSize: cNameTextSize,
 		fontFamily: 'Ariel',
@@ -312,7 +312,7 @@ function makeEntity(fileLocation, name, layerToJoin, wsDataRef) {
 	spriteGroup.add(nameText);
 	entityEntry.kName = nameText; 
 
-	var hpContainer = new Kinetic.Rect({
+	var hpContainer = new Konva.Rect({
 		width: cSpriteStartingWidth * 2,
 		height: nameText.getTextHeight() ,
 		fill: 'black'
@@ -322,7 +322,7 @@ function makeEntity(fileLocation, name, layerToJoin, wsDataRef) {
 	spriteGroup.add(hpContainer);
 	entityEntry.kHpContainer = hpContainer;
 
-	var hpBar = new Kinetic.Rect({
+	var hpBar = new Konva.Rect({
 		width: hpContainer.width(),
 		height: hpContainer.height() ,
 		fill: 'green',
@@ -336,7 +336,7 @@ function makeEntity(fileLocation, name, layerToJoin, wsDataRef) {
 
 	// visual debug helper
 	entityEntry.showDebugVisuals = false;
-	var debugWsCoordinates =  new Kinetic.Text({
+	var debugWsCoordinates =  new Konva.Text({
 		text: 'wsCoord: not Initialized',
 		fontSize: cNameTextSize,
 		fontFamily: 'Ariel',
@@ -344,7 +344,7 @@ function makeEntity(fileLocation, name, layerToJoin, wsDataRef) {
 	});
 	entityEntry.kDebugWsCoordinates = debugWsCoordinates;
 	spriteGroup.add(debugWsCoordinates);
-	var debugCanvasCoordinates =  new Kinetic.Text({
+	var debugCanvasCoordinates =  new Konva.Text({
 		text: 'canvasCoord: not Initialized',
 		fontSize: cNameTextSize,
 		fontFamily: 'Ariel',
@@ -355,7 +355,7 @@ function makeEntity(fileLocation, name, layerToJoin, wsDataRef) {
 
 
 	//
-	// var pointOfReferenceOrigin = new Kinetic.Rect({ x: -1, y: -1, width: 2, height: 2, fill: 'red'});
+	// var pointOfReferenceOrigin = new Konva.Rect({ x: -1, y: -1, width: 2, height: 2, fill: 'red'});
 	// spriteGroup.add(pointOfReferenceOrigin);
 
 
@@ -416,7 +416,7 @@ function makeSprite(fileLocation, entity) {
 
 		console.log('Unable to find image match');
 
-		// kSprite =  new Kinetic.Sprite({
+		// kSprite =  new Konva.Sprite({
 		// 	x: 0,
 		// 	y: 0,
 		// 	image: imgObj,
@@ -436,7 +436,7 @@ function makeSprite(fileLocation, entity) {
 	};
 	imgObj.src = fileLocation;
 
-	kSprite = new Kinetic.Sprite({
+	kSprite = new Konva.Sprite({
 			x: 0,
 			y: 0,
 			width: cSpriteStartingWidth,

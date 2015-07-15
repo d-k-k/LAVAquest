@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="utf-8" />
+    <title>Gamepad test</title>
+    <!-- Important style. Remove this only under conditions when you understand why. -->
+    <style> 
+    html *
+    {
+       font-family: Arial;
+    }
+    </style>
+</head>
+<body>
+    <div id='topDiv'>
+Check the console.
+Currently waiting for gamepad detection.
+    </div>
+</body>
+
+
+<script type="text/javascript">
+
+console.log("Gampad: " + canGame());
+console.log("Waiting for game pad connections");
+
+
+var checkGP = window.setInterval(function() {
+    if(navigator.getGamepads()[0]) {
+        console.log("Gamepad detected data object:");
+        console.dir(navigator.getGamepads()[0]);
+        fillControls();
+        window.setInterval(checkGpForInput, 100);
+        window.clearInterval(checkGP);
+    }
+
+}, 500);
+
+
+
+
+
+function canGame() {
+    return "getGamepads" in navigator;
+}
+
+
+
+function fillControls() {
+    var currentDiv = document.getElementById('topDiv');
+    var innerGuts = "";
+    var currentGp = navigator.getGamepads()[0];
+
+    if(currentGp) {
+
+        innerGuts += "Gamepad id:" + currentGp.id;
+
+        for(var i = 0; i < currentGp.axes.length; i++) {
+            innerGuts+= "<div id='gp1a" + i + "'></div><br>" 
+        }
+
+        for(var i = 0; i < currentGp.buttons.length; i++) {
+            innerGuts+= "<div id='gp1b" + i + "'></div><br>" 
+        }
+        currentDiv.innerHTML = innerGuts;
+    }
+    else {
+        console.log("Error gamepad state:" + currentGp);
+    }
+
+}
+
+
+function checkGpForInput() {
+    var currentDiv;
+    var currentGp = navigator.getGamepads()[0];
+
+    for(var i = 0; i < currentGp.axes.length; i++) {
+        currentDiv = document.getElementById( 'gp1a' + i );
+        currentDiv.innerHTML = "Axis " + i + ":" + currentGp.axes[i];
+    }
+
+    for(var i = 0; i < currentGp.buttons.length; i++) {
+        currentDiv = document.getElementById('gp1b' + i);
+        currentDiv.innerHTML = "Button " + i + ":" + currentGp.buttons[i].pressed + "(" + currentGp.buttons[i].value + ")";
+    }
+
+    //console.log("spam");
+
+}
+
+
+
+</script>
+
+</html>

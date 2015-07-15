@@ -1,0 +1,234 @@
+
+
+<!DOCTYPE html>
+<html>
+
+<head lang="en">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=10.0, minimum-scale=1.0, user-scalable=1" />
+
+    <title>Pong with Divs</title>
+
+    <style> 
+    html *
+    {
+       font-family: Arial;
+    }
+
+    .center {
+        margin-left: auto;
+        margin-right: auto;
+        width: 60%;
+        background-color: #b0e0e6;
+    }
+
+    </style>
+
+
+</head>
+
+<body>
+
+    <div id='topDiv'>
+
+    </div>
+
+
+</body>
+
+
+
+
+
+
+
+
+
+
+
+<script type="text/javascript">
+
+    var topDiv = document.getElementById('topDiv');
+
+    var leftPaddle = createPaddleDiv();
+    leftPaddle.setAttribute('id', 'leftPaddleDiv');
+    leftPaddle.style.left = window.innerWidth * 0.15 + 'px';
+    leftPaddle.style.top = window.innerHeight * 0.5 + parseInt(leftPaddle.style.height)/2 + 'px';
+
+    var rightPaddle = createPaddleDiv();
+    rightPaddle.setAttribute('id', 'rightPaddleDiv');
+    rightPaddle.style.left = window.innerWidth * 0.85 + 'px';
+    rightPaddle.style.top = window.innerHeight * 0.5 + parseInt(rightPaddle.style.height)/2 + 'px';
+
+    var leftPlayer = {};
+    leftPlayer.div = leftPaddle;
+    var rightPlayer = {};
+    rightPlayer.div = rightPaddle;
+
+    var ball = {};
+    ball.div = createBallDiv();
+    ball.div.setAttribute('id', 'ballDiv');
+    ball.div.style.left = window.innerWidth * 0.5 + 'px';
+    ball.div.style.top = window.innerHeight * 0.5 + 'px';
+    ball.vertMove = 4;
+    ball.horiMove = 4;
+
+
+    var moveSpeed = 5;
+
+
+
+
+
+
+    bindControls();
+    setInterval( mainUpdater, 20); //ms 20 = 50fps
+
+    function mainUpdater() {
+
+        if(leftPlayer.movingUp) {  leftPlayer.div.style.top = parseInt(leftPlayer.div.style.top) - moveSpeed + 'px'; }
+        else if(leftPlayer.movingDown) {  leftPlayer.div.style.top = parseInt(leftPlayer.div.style.top) + moveSpeed + 'px'; }
+
+        if(rightPlayer.movingUp) {  rightPlayer.div.style.top = parseInt(rightPlayer.div.style.top) - moveSpeed + 'px'; }
+        else if(rightPlayer.movingDown) {  rightPlayer.div.style.top = parseInt(rightPlayer.div.style.top) + moveSpeed + 'px'; }
+
+        ball.div.style.left = parseInt(ball.div.style.left) + ball.horiMove + 'px';
+        ball.div.style.top = parseInt(ball.div.style.top) + ball.vertMove + 'px';
+
+        ballBounceCheck();
+
+    } //end mainUpdater
+
+
+
+
+    function createPaddleDiv() {
+        var paddle = document.createElement('div');
+        topDiv.appendChild(paddle);
+        paddle.style.width  = window.innerWidth * 0.05 + 'px';
+        paddle.style.height = window.innerHeight * 0.2 + 'px';
+        paddle.style.backgroundColor = 'black';
+        paddle.style.position = 'absolute';
+        
+        return paddle;
+    }
+
+    function createBallDiv() {
+        var ball = document.createElement('div');
+        topDiv.appendChild(ball);
+        ball.style.width = window.innerWidth * 0.02 + 'px';
+        ball.style.height = window.innerWidth * 0.02 + 'px';
+        ball.style.backgroundColor = 'black';
+        ball.style.position = 'absolute';
+        
+        return ball;
+    }
+
+    function bindControls() {
+        document.addEventListener( "keydown" , handleKeyDown, false);
+        document.addEventListener( "keyup" , handleKeyUp, false);
+    } 
+
+    function handleKeyDown(event) {
+        console.log('keydown:' + event.keyCode);
+        switch(event.keyCode) {
+            case 87: //w
+                leftPlayer.movingUp = true;
+            break;
+            case 83: //s
+                leftPlayer.movingDown = true;
+            break;
+            case 73: //i
+                rightPlayer.movingUp = true;
+            break;
+            case 75: //k
+                rightPlayer.movingDown = true;
+            break;
+        }
+    }
+    function handleKeyUp() {
+        console.log('keyup:' + event.keyCode);
+        switch(event.keyCode) {
+            case 87: //w
+                leftPlayer.movingUp = false;
+            break;
+            case 83: //s
+                leftPlayer.movingDown = false;
+            break;
+            case 73: //i
+                rightPlayer.movingUp = false;
+            break;
+            case 75: //k
+                rightPlayer.movingDown = false;
+            break;
+        }
+
+    }
+
+
+    function ballBounceCheck() {
+
+        boundBallOffPaddles();
+
+
+        //if ball above screen
+        if( parseInt( ball.div.style.top ) < 0) { ball.vertMove = Math.abs( ball.vertMove ); }
+        if( parseInt( ball.div.style.top ) + parseInt( ball.div.style.height) > window.innerHeight) { ball.vertMove = Math.abs(ball.vertMove) * -1; }
+        
+        if( parseInt( ball.div.style.left) < 0) {ball.horiMove = Math.abs( ball.horiMove); }
+        if( parseInt( ball.div.style.left) + parseInt(ball.div.style.width) > window.innerWidth) {ball.horiMove = Math.abs( ball.horiMove) * -1; }        
+
+    } //ballBounceCheck
+
+    function boundBallOffPaddles() {
+
+        var btl = {x: parseInt( ball.div.style.left), y: parseInt(ball.div.style.top) }
+        var btr = {x: parseInt( ball.div.style.left) + parseInt(ball.div.style.width), y: parseInt(ball.div.style.top) }
+        var bbl = {x: parseInt( ball.div.style.left), y: parseInt(ball.div.style.top) + parseInt(ball.div.style.height) }
+        var bbr = {x: parseInt( ball.div.style.left) + parseInt(ball.div.style.width), y: parseInt(ball.div.style.top) + parseInt(ball.div.style.height) }
+
+        var lprect = { xTopLeft: parseInt(leftPlayer.div.style.left), yTopLeft: parseInt(leftPlayer.div.style.top), width: parseInt(leftPlayer.div.style.width), height: parseInt(leftPlayer.div.style.height) };
+        var rprect = { xTopLeft: parseInt(rightPlayer.div.style.left), yTopLeft: parseInt(rightPlayer.div.style.top), width: parseInt(rightPlayer.div.style.width), height: parseInt(rightPlayer.div.style.height) };
+
+
+        if( isPointInRect(btl, lprect) ||
+            isPointInRect(btr, lprect) ||
+            isPointInRect(bbr, lprect) ||
+            isPointInRect(bbl, lprect) 
+             ) {
+            ball.horiMove = Math.abs(ball.horiMove);
+            ball.vertMove = -1 * ball.vertMove;
+        }
+
+        if( isPointInRect(btl, rprect) ||
+            isPointInRect(btr, rprect) ||
+            isPointInRect(bbr, rprect) ||
+            isPointInRect(bbl, rprect) 
+             ) {
+            ball.horiMove = Math.abs(ball.horiMove) * -1;
+            ball.vertMove = -1 * ball.vertMove;
+        }
+
+
+    }//end boundBallOffPaddles
+
+
+    function isPointInRect(point, rect) {
+
+        if(point.x >= rect.xTopLeft &&
+            point.x <= (rect.xTopLeft + rect.width) &&
+            point.y >= rect.yTopLeft &&
+            point.y <= (rect.yTopLeft + rect.height) ) {
+            return true;
+        }
+
+        return false;
+    }
+
+
+</script>
+
+
+
+</html>
+
